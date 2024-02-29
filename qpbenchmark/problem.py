@@ -33,10 +33,11 @@ class Problem(qpsolvers.Problem):
         b: Optional[np.ndarray],
         lb: Optional[np.ndarray],
         ub: Optional[np.ndarray],
+        is_feasible: Optional[bool],
         name: str,
     ):
         """Quadratic program in qpsolvers format."""
-        super().__init__(P, q, G, h, A, b, lb, ub)
+        super().__init__(P, q, G, h, A, b, lb, ub, is_feasible)
         self.name = name
 
     def to_dense(self):
@@ -54,6 +55,7 @@ class Problem(qpsolvers.Problem):
             self.b,
             self.lb,
             self.ub,
+            is_feasible=self.is_feasible,
             name=self.name,
         )
 
@@ -73,6 +75,7 @@ class Problem(qpsolvers.Problem):
             self.b,
             self.lb,
             self.ub,
+            is_feasible=self.is_feasible,
             name=self.name,
         )
 
@@ -94,5 +97,6 @@ class Problem(qpsolvers.Problem):
             loaded.b,
             loaded.lb,
             loaded.ub,
+            loaded.is_feasible,
             name,
         )
