@@ -48,6 +48,21 @@ def parse_command_line_arguments(
         action="store_true",
         help="verbose mode",
     )
+
+    parser.add_argument(
+        "--with_objective_val",
+        default=False,
+        action='store_true',
+        help="store the objective value in results",
+    )
+
+    parser.add_argument(
+        "--with_primal_sol",
+        default=False,
+        action='store_true',
+        help="store the primal solution in results",
+    )
+
     subparsers = parser.add_subparsers(
         title="command", dest="command", required=True
     )
@@ -157,20 +172,6 @@ def parse_command_line_arguments(
     parser_run.add_argument(
         "--author",
         help="author field in the post-run report",
-    )
-
-    parser_run.add_argument(
-        "--with_objective_val",
-        default=False,
-        action='store_true',
-        help="store the objective value in results",
-    )
-
-    parser_run.add_argument(
-        "--with_primal_sol",
-        default=False,
-        action='store_true',
-        help="store the primal solution in results",
     )
 
     args = parser.parse_args()
