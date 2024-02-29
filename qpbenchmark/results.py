@@ -186,7 +186,8 @@ class Results:
 
         if self.with_objective_val:
             # objective value might be None, needs to be replaced by np.inf
-            entry["objective_val"] = [solution.obj if solution.obj is not None else np.inf]
+            obj = solution.objective_value()
+            entry["objective_val"] = [obj if obj is not None else np.inf]
 
         if self.with_primal_sol:
             entry["primal_sol"] = [solution.x if solution.x is not None else np.array([np.inf])]
