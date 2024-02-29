@@ -27,11 +27,15 @@ class Results:
         csv_path: Path to the results CSV file.
         df: Data frame storing the results.
         test_set: Test set from which results were produced.
+        with_objective_val: Flag indicating whether objective value should be stored in df.
+        with_primal_sol: Flag indicating whether primal solution should be stored in df.
     """
 
     csv_path: str
     df: pandas.DataFrame
     test_set: TestSet
+    with_objective_val: bool
+    with_primal_sol: bool
 
     @staticmethod
     def check_df(df) -> None:
@@ -43,17 +47,17 @@ class Results:
         if not isinstance(df["found"].dtype, np.dtypes.BoolDType):
             raise ResultsError('"found" column has some non-boolean values')
 
-    def __init__(self, csv_path: str, test_set: TestSet):
+    def __init__(self, csv_path: str, test_set: TestSet, with_objective_val=False, with_primal_sol=False):
         """Initialize results.
 
         Args:
             csv_path: Path to the results CSV file.
             test_set: Test set from which results were produced.
         """
-        df = pandas.DataFrame(
-            [],
-            columns=[
+
+        columns_required = [
                 "problem",
+                "is_feasible",
                 "solver",
                 "settings",
                 "runtime",
@@ -61,10 +65,12 @@ class Results:
                 "primal_residual",
                 "dual_residual",
                 "duality_gap",
-            ],
-        ).astype(
-            {
+            ]
+        columns_optional = []
+
+        types = {
                 "problem": str,
+                "is_feasible": bool,
                 "solver": str,
                 "settings": str,
                 "runtime": float,
@@ -73,14 +79,38 @@ class Results:
                 "dual_residual": float,
                 "duality_gap": float,
             }
-        )
+
+        if with_objective_val:
+            columns_optional.append("objective_val")
+            types["objective_val"] = float
+
+        if with_primal_sol:
+            columns_optional.append("primal_sol")
+            types["primal_sol"] = object
+        columns = columns_required + columns_optional
+
+        df = pandas.DataFrame([], columns=columns).astype(types)
+
         if os.path.exists(csv_path):
             logging.info(f"Loading existing results from {csv_path}")
-            df = pandas.concat([df, pandas.read_csv(csv_path)])
+            df = pandas.read_csv(csv_path, usecols=lambda x: x in columns)
+            assert np.isin(columns_required, df.columns).all()
+
+        if with_objective_val and "objective_val" not in df.columns:
+            df["objective_val"] = np.inf
+
+        if with_primal_sol:
+            if "primal_sol" not in df.columns:
+                df["primal_sol"] = np.inf
+            else:
+                df["primal_sol"] = df["primal_sol"].map(lambda x: np.fromstring(x[1:-1], sep=" ", dtype=float))
+
         Results.check_df(df)
         self.csv_path = csv_path
         self.df = df
         self.test_set = test_set
+        self.with_objective_val = with_objective_val
+        self.with_primal_sol = with_primal_sol
 
     def write(self) -> None:
         """Write results to their CSV file for persistence."""
@@ -141,24 +171,27 @@ class Results:
             ]
         )
         found: bool = True if solution.found else False  # make sure not None
-        self.df = pandas.concat(
-            [
-                self.df,
-                pandas.DataFrame(
-                    {
-                        "problem": [problem.name],
-                        "solver": [solver],
-                        "settings": [settings],
-                        "runtime": [runtime],
-                        "found": [found],
-                        "primal_residual": [solution.primal_residual()],
-                        "dual_residual": [solution.dual_residual()],
-                        "duality_gap": [solution.duality_gap()],
-                    }
-                ),
-            ],
-            ignore_index=True,
-        )
+
+        entry = {
+            "problem": [problem.name],
+            "solver": [solver],
+            "is_feasible": [problem.is_feasible],
+            "settings": [settings],
+            "runtime": [runtime],
+            "found": [found],
+            "primal_residual": [solution.primal_residual()],
+            "dual_residual": [solution.dual_residual()],
+            "duality_gap": [solution.duality_gap()],
+            }
+
+        if self.with_objective_val:
+            # objective value might be None, needs to be replaced by np.inf
+            entry["objective_val"] = [solution.obj if solution.obj is not None else np.inf]
+
+        if self.with_primal_sol:
+            entry["primal_sol"] = [solution.x if solution.x is not None else np.array([np.inf])]
+
+        self.df = pandas.concat([self.df, pandas.DataFrame(entry)], ignore_index=True)
 
     def build_success_rate_df(
         self,

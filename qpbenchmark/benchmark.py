@@ -159,6 +159,20 @@ def parse_command_line_arguments(
         help="author field in the post-run report",
     )
 
+    parser_run.add_argument(
+        "--with_objective_val",
+        default=False,
+        action='store_true',
+        help="store the objective value in results",
+    )
+
+    parser_run.add_argument(
+        "--with_primal_sol",
+        default=False,
+        action='store_true',
+        help="store the primal solution in results",
+    )
+
     args = parser.parse_args()
     if "settings" in args and args.settings is not None:
         args.settings = args.settings.lower()
@@ -261,7 +275,8 @@ def main(test_set_path: Optional[str] = None):
     if test_set_path is None:
         test_set_path = args.test_set_path
     test_set = load_test_set(os.path.abspath(test_set_path))
-    results = Results(find_results_file(args, test_set_path), test_set)
+    results = Results(find_results_file(args, test_set_path), test_set,
+                      with_objective_val=args.with_objective_val, with_primal_sol=args.with_primal_sol)
 
     if args.command == "run":
         run(
